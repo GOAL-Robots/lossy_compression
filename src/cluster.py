@@ -38,6 +38,7 @@ def start_job(cfg):
         ) + command_line_args
         print(command_line, flush=True)
         os.system(command_line)
+        time.sleep(5)
 
 
 def get_n_free_cpus(node):
@@ -52,7 +53,7 @@ def get_free_mem(node):
     return memory - allocated_memory
 
 
-def node_list_availability(node_list, min_cpus=2, min_free_mem=4000):
+def node_list_availability(node_list, min_cpus=4, min_free_mem=4000):
     for node in node_list:
         n_free_cpus = get_n_free_cpus(node)
         free_mem = get_free_mem(node)
@@ -82,7 +83,7 @@ def get_partition_reservation():
         return "sleuths", "triesch-shared"
     print("no free space")
     print("No space available on the cluster. Defaulting to xmen OPTION 1")
-    return "sleuths", None
+    return "x-men", None
 
 
 def node_to_n_jobs():

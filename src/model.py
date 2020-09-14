@@ -26,6 +26,7 @@ class Model(object):
         self.encoder_model = to_model(model_conf.networks.encoder_model_arch)
         self.correlate_decoder_model = to_model(model_conf.networks.correlate_decoder_model_arch)
         self.source_decoder_model = to_model(model_conf.networks.source_decoder_model_arch)
+        self.source_no_repetition_decoder_model = to_model(model_conf.networks.source_no_repetition_decoder_model_arch)
         self.shared_readout_model = to_model(model_conf.networks.shared_readout_model_arch)
         self.source_readout_models = [to_model(model_conf.networks.source_readout_model_arch) for i in range(self.n_sources)]
         ### optimizer ###
@@ -75,6 +76,9 @@ class Model(object):
     def get_sources_reconstructions(self, latent):
         return self.source_decoder_model(latent)
 
+    def get_sources_no_repetition_reconstructions(self, latent):
+        return self.source_no_repetition_decoder_model(latent)
+
     def get_sources_readouts(self, latent):
         return [source_readout_model(latent) for source_readout_model in self.source_readout_models]
 
@@ -105,9 +109,19 @@ class Model(object):
                 reconstructions = self.get_sources_reconstructions(latent)
                 loss = tf.reduce_sum(tf.reduce_mean((reconstructions - inputs) ** 2, axis=-1))
                 variables = self.encoder_model.variables + self.source_decoder_model.variables
+            elif self.decoding_mode == 'sources_no_repetition':
+                inputs = tf.concat(sources + [shared], axis=-1)
+                reconstructions = self.get_sources_no_repetition_reconstructions(latent)
+                loss = tf.reduce_sum(tf.reduce_mean((reconstructions - inputs) ** 2, axis=-1))
+                variables = self.encoder_model.variables + self.source_no_repetition_decoder_model.variables
             elif self.decoding_mode == 'correlates':
                 reconstructions = self.get_correlates_reconstructions(latent)
                 loss = tf.reduce_sum(tf.reduce_mean((reconstructions - correlates) ** 2, axis=-1))
+                variables = self.encoder_model.variables + self.correlate_decoder_model.variables
+            elif self.decoding_mode == 'correlates_fancy_loss':
+                reconstructions = self.get_correlates_reconstructions(latent)
+                mse = (reconstructions - correlates) ** 2
+                loss = tf.reduce_sum(tf.reduce_mean(mse / tf.stop_gradient(mse + 0.1), axis=-1))
                 variables = self.encoder_model.variables + self.correlate_decoder_model.variables
             else:
                 raise VallueError("unrecognized option in conf: {}".format(self.decoding_mode))

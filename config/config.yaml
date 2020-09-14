@@ -22,6 +22,7 @@ defaults:
   - model_conf/networks/correlator_model_arch: default
   - model_conf/networks/encoder_model_arch: default
   - model_conf/networks/source_decoder_model_arch: default
+  - model_conf/networks/source_no_repetition_decoder_model_arch: default
   - model_conf/networks/correlate_decoder_model_arch: default
   - model_conf/networks/source_readout_model_arch: default
   - model_conf/networks/shared_readout_model_arch: default

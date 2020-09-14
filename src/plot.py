@@ -44,10 +44,37 @@ def plot_convergence_value_wrt_1d(ax, fits, wrt, xlabel=None, ylabel=None, title
     ax.legend()
 
 
-if __name__ == '__main__':
-    col = Collection('../data/wrt_dim_latent/')
-    fits = col.compute_fits()
+def plot_speed_value_wrt_1d(ax, fits, wrt, xlabel=None, ylabel=None, title=None):
+    keys = list(fits.keys())
+    keys.sort(key=lambda x: getattr(x, wrt))
+    n_runs = len(fits[keys[0]])
+    x = np.array([getattr(key, wrt) for key in keys])
+    y_sources_mean = [np.mean([fit.sources.a for fit in fits[key]]) for key in keys]
+    y_shared_mean = [np.mean([fit.shared.a for fit in fits[key]]) for key in keys]
+    width = 0.4
+    if n_runs > 1:
+        y_sources_std = [np.std([fit.sources.a for fit in fits[key]]) for key in keys]
+        y_shared_std = [np.std([fit.shared.a for fit in fits[key]]) for key in keys]
+        sources_rects = ax.bar(x - width / 2, y_sources_mean, width, yerr=y_sources_std, label='sources')
+        shared_rects = ax.bar(x + width / 2, y_shared_mean, width, yerr=y_shared_std, label='shared')
+    else:
+        sources_rects = ax.bar(x - width / 2, y_sources_mean, width, label='sources')
+        shared_rects = ax.bar(x + width / 2, y_shared_mean, width, label='shared')
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+    ax.set_title(title)
+    ax.legend()
 
-    with FigureManager("/tmp/test.png") as fig:
-        ax = fig.add_subplot(111)
-        plot_convergence_value_wrt_1d(ax, fits, wrt="dim_latent", xlabel="latent dimension", ylabel="batch reconstruction error", title="Reconstruction error of the readouts")
+if __name__ == '__main__':
+
+    for suffix in ["", "_mode_correlates", "_mode_sources_no_repetition", "_binary", "_binary_0.1", "_mode_correlates_5_sources", "_mode_correlates_fancy_loss"]:
+        col = Collection('../data/wrt_dim_latent{}/'.format(suffix))
+        fits = col.compute_fits()
+
+        with FigureManager("/tmp/final_recerr{}.png".format(suffix)) as fig:
+            ax = fig.add_subplot(111)
+            plot_convergence_value_wrt_1d(ax, fits, wrt="dim_latent", xlabel="latent dimension", ylabel="mean reconstruction error", title="Reconstruction error of the readouts (n_shared=10, n_non_shared=5x2)")
+
+        # with FigureManager("/tmp/speed{}.png".format(suffix)) as fig:
+        #     ax = fig.add_subplot(111)
+        #     plot_speed_value_wrt_1d(ax, fits, wrt="dim_latent", xlabel="latent dimension", ylabel="batch reconstruction error", title="Reconstruction error of the readouts")
