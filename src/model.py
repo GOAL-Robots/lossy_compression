@@ -41,7 +41,7 @@ class Model(object):
         elif self.noise.type == "choice":
             values = tf.constant(list(self.noise.val))
             dist = tfp.distributions.Multinomial(1, probs=list(self.noise.probs))
-            return dist.sample(sample_shape=self.batch_size) * values
+            return tf.reduce_sum(dist.sample(sample_shape=shape) * values, axis=-1)
         elif self.noise.type == "exponential":
             return tfp.distributions.Exponential(
                 rate=1 / self.noise.mean,
