@@ -3,7 +3,6 @@ import hydra
 import json
 import omegaconf
 import os
-from test_data import TestDataContainer
 
 
 @hydra.main(config_path="../config/scripts/", config_name="cluster.yaml")
