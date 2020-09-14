@@ -1,0 +1,4 @@
+# @package _group_
+
+type: exponential
+mean: 1.0

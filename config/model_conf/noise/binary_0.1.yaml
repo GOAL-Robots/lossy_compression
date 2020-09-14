@@ -1,0 +1,9 @@
+# @package _group_
+
+type: choice
+values:
+  - -1.0
+  - 1.0
+probs:
+  - 0.9
+  - 0.1

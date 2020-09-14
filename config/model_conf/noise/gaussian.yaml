@@ -1,0 +1,5 @@
+# @package _group_
+
+type: gaussian
+mean: 0.0
+std: 1.0
