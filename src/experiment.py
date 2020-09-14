@@ -70,10 +70,14 @@ class Experiment(object):
 
 @hydra.main(config_path='../config/', config_name='config.yaml')
 def main(cfg):
+    experiment(cfg)
+
+
+def experiment(cfg):
     for repetition in range(cfg.experiment_conf.n_repetitions):
         print("repetition nb {}".format(repetition + 1))
-        experiment = Experiment(cfg.experiment_conf, cfg.model_conf, repetition=repetition)
-        experiment()
+        exp = Experiment(cfg.experiment_conf, cfg.model_conf, repetition=repetition)
+        exp()
 
 
 if __name__ == '__main__':
