@@ -10,8 +10,8 @@ model_conf:
   batch_size: 1024
   learning_rate: 1e-3
   n_sources: 2
-  dim_sources: 10
-  dim_shared: 5
+  dim_sources: 5
+  dim_shared: 10
   dim_correlate: 100
   dim_latent: 10
   decoding_mode: sources
