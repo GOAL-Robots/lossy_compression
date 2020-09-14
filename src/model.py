@@ -39,7 +39,7 @@ class Model(object):
                 stddev=self.noise.std,
             )
         elif self.noise.type == "choice":
-            values = tf.constant(list(self.noise.values))
+            values = tf.constant(list(self.noise.val))
             dist = tfp.distributions.Multinomial(1, probs=list(self.noise.probs))
             return dist.sample(sample_shape=self.batch_size) * values
         elif self.noise.type == "exponential":
