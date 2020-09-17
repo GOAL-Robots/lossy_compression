@@ -22,58 +22,39 @@ class FigureManager:
             plt.show()
 
 
-def plot_convergence_value_wrt_1d(ax, fits, wrt, xlabel=None, ylabel=None, title=None):
-    keys = list(fits.keys())
+def plot_convergence_value_wrt_1d(ax, sources_means, sources_stds, shared_means, shared_stds,
+        wrt, xlabel=None, ylabel=None, title=None):
+    keys = list(sources_means.keys())
     keys.sort(key=lambda x: getattr(x, wrt))
-    n_runs = len(fits[keys[0]])
     x = np.array([getattr(key, wrt) for key in keys])
-    y_sources_mean = [np.mean([fit.sources.r for fit in fits[key]]) for key in keys]
-    y_shared_mean = [np.mean([fit.shared.r for fit in fits[key]]) for key in keys]
-    width = 0.4
-    if n_runs > 1:
-        y_sources_std = [np.std([fit.sources.r for fit in fits[key]]) for key in keys]
-        y_shared_std = [np.std([fit.shared.r for fit in fits[key]]) for key in keys]
-        sources_rects = ax.bar(x - width / 2, y_sources_mean, width, yerr=y_sources_std, label='sources')
-        shared_rects = ax.bar(x + width / 2, y_shared_mean, width, yerr=y_shared_std, label='shared')
-    else:
-        sources_rects = ax.bar(x - width / 2, y_sources_mean, width, label='sources')
-        shared_rects = ax.bar(x + width / 2, y_shared_mean, width, label='shared')
+    sources_means = np.array([sources_means[key] for key in keys])
+    sources_stds = np.array([sources_stds[key] for key in keys])
+    shared_means = np.array([shared_means[key] for key in keys])
+    shared_stds = np.array([shared_stds[key] for key in keys])
+    ax.plot(x, sources_means, color='b', linestyle='--', marker='o', label="sources")
+    ax.plot(x, shared_means, color='r', linestyle='--', marker='o', label="shared")
+    ax.fill_between(x, sources_means - sources_stds, sources_means + sources_stds, color='b', alpha=0.5)
+    ax.fill_between(x, shared_means - shared_stds, shared_means + shared_stds, color='r', alpha=0.5)
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
     ax.set_title(title)
     ax.legend()
 
-
-def plot_speed_value_wrt_1d(ax, fits, wrt, xlabel=None, ylabel=None, title=None):
-    keys = list(fits.keys())
-    keys.sort(key=lambda x: getattr(x, wrt))
-    n_runs = len(fits[keys[0]])
-    x = np.array([getattr(key, wrt) for key in keys])
-    y_sources_mean = [np.mean([fit.sources.a for fit in fits[key]]) for key in keys]
-    y_shared_mean = [np.mean([fit.shared.a for fit in fits[key]]) for key in keys]
-    width = 0.4
-    if n_runs > 1:
-        y_sources_std = [np.std([fit.sources.a for fit in fits[key]]) for key in keys]
-        y_shared_std = [np.std([fit.shared.a for fit in fits[key]]) for key in keys]
-        sources_rects = ax.bar(x - width / 2, y_sources_mean, width, yerr=y_sources_std, label='sources')
-        shared_rects = ax.bar(x + width / 2, y_shared_mean, width, yerr=y_shared_std, label='shared')
-    else:
-        sources_rects = ax.bar(x - width / 2, y_sources_mean, width, label='sources')
-        shared_rects = ax.bar(x + width / 2, y_shared_mean, width, label='shared')
-    ax.set_xlabel(xlabel)
-    ax.set_ylabel(ylabel)
-    ax.set_title(title)
-    ax.legend()
 
 if __name__ == '__main__':
 
     for suffix in ["", "_mode_correlates", "_mode_sources_no_repetition", "_binary", "_binary_0.1", "_mode_correlates_5_sources", "_mode_correlates_fancy_loss", "_mode_correlates_dim_correlate_10", "_mode_correlates_dim_correlate_15", "_mode_correlates_dim_correlate_20", "_mode_correlates_dim_correlate_25", "_mode_correlates_dim_correlate_50", "_mode_correlates_dim_correlate_100", "_mode_correlates_dim_correlate_200", "_mode_correlates_dim_correlate_500", "_dim_correlate_1000"]:
         col = Collection('../data/wrt_dim_latent{}/'.format(suffix))
-        fits = col.compute_fits()
+        sources_means, sources_stds, shared_means, shared_stds = col.get_final_reconstruction_errors_means_stds(n=50)
 
-        with FigureManager("/tmp/final_recerr{}.png".format(suffix)) as fig:
+        with FigureManager("/tmp/new_final_recerr{}.png".format(suffix)) as fig:
             ax = fig.add_subplot(111)
-            plot_convergence_value_wrt_1d(ax, fits, wrt="dim_latent", xlabel="latent dimension", ylabel="mean reconstruction error", title="Reconstruction error of the readouts (n_shared=10, n_non_shared=5x2)")
+            plot_convergence_value_wrt_1d(ax, sources_means, sources_stds, shared_means, shared_stds,
+                wrt="dim_latent",
+                xlabel="latent dimension",
+                ylabel="mean reconstruction error",
+                title="Reconstruction error of the readouts (n_shared=10, n_non_shared=5x2)"
+            )
 
         # with FigureManager("/tmp/speed{}.png".format(suffix)) as fig:
         #     ax = fig.add_subplot(111)
