@@ -12,7 +12,6 @@ class Experiment(object):
         self.model = Model(model_conf)
         self.experiment_conf = experiment_conf
         self.model_conf = model_conf
-        self.n_pretrain = experiment_conf.n_pretrain
         self.n_train_encoder = experiment_conf.n_train_encoder
         self.n_train_readout = experiment_conf.n_train_readout
         ### summary ###
@@ -21,13 +20,6 @@ class Experiment(object):
         self.data_collection_path = experiment_conf.data_collection_path
         self.data_readout_sources = np.zeros(self.n_train_readout)
         self.data_readout_shared = np.zeros(self.n_train_readout)
-
-    def pretrain(self):
-        with self.summary_writer.as_default():
-            for i in range(self.n_pretrain):
-                print("pretrain: {: 4d}/{: 4d}".format(i + 1, self.n_pretrain), end='\r')
-                tf.summary.scalar("pretrain_loss", self.model.pretrain(), step=i)
-        print('')
 
     def train_encoder(self):
         with self.summary_writer.as_default():
@@ -62,7 +54,7 @@ class Experiment(object):
         np.savez(path, sources=self.data_readout_sources, shared=self.data_readout_shared)
 
     def __call__(self):
-        self.pretrain()
+        self.model.z_score()
         self.train_encoder()
         self.train_readout()
         self.dump_data()

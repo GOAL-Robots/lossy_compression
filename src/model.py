@@ -2,6 +2,7 @@ import tensorflow as tf
 import tensorflow_probability as tfp
 from tensorflow.keras import models
 from omegaconf import OmegaConf
+import numpy as np
 
 
 def to_model(cfg):
@@ -29,6 +30,8 @@ class Model(object):
         self.source_no_repetition_decoder_model = to_model(model_conf.networks.source_no_repetition_decoder_model_arch)
         self.shared_readout_model = to_model(model_conf.networks.shared_readout_model_arch)
         self.source_readout_models = [to_model(model_conf.networks.source_readout_model_arch) for i in range(self.n_sources)]
+        self.correlates_means = [tf.Variable(np.zeros(shape=self.dim_correlate), dtype=np.float32) for _ in range(self.n_sources)]
+        self.correlates_stds = [tf.Variable(np.ones(shape=self.dim_correlate), dtype=np.float32) for _ in range(self.n_sources)]
         ### optimizer ###
         self.optimizer = tf.keras.optimizers.Adam(self.learning_rate)
 
@@ -59,7 +62,11 @@ class Model(object):
 
     def get_correlates(self, sources, shared, format='list'):
         inputs = self.get_inputs(sources, shared)
-        ret = [correlator_model(inp) for correlator_model, inp in zip(self.correlator_models, inputs)]
+        ret = [
+            (correlator_model(inp) - correlate_mean) / correlate_std
+            for correlator_model, inp, correlate_mean, correlate_std in
+            zip(self.correlator_models, inputs, self.correlates_means, self.correlates_stds)
+        ]
         if format == 'list':
             return ret
         elif format == 'tensor':
@@ -85,17 +92,17 @@ class Model(object):
     def get_shared_readout(self, latent):
         return self.shared_readout_model(latent)
 
-    def pretrain(self):
-        with tf.GradientTape() as tape:
-            sources = self.get_sources()
-            shared = self.get_shared()
-            correlates = self.get_correlates(sources, shared, format='tensor')
-            std = tf.math.reduce_std(correlates)
-            loss = (1 - std) ** 2
-            variables = sum([model.variables for model in self.correlator_models], [])
-            grads = tape.gradient(loss, variables)
-            self.optimizer.apply_gradients(zip(grads, variables))
-        return loss / self.batch_size
+    def z_score(self):
+        sources = self.get_sources()
+        shared = self.get_shared()
+        correlates = self.get_correlates(sources, shared, format='list')
+        means = [tf.reduce_mean(correlate, axis=0) for correlate in correlates]
+        stds = [tf.math.reduce_std(correlate, axis=0) for correlate in correlates]
+        for correlate_mean, mean in zip(self.correlates_means, means):
+            correlate_mean.assign_add(mean)
+        for correlate_std, std in zip(self.correlates_stds, stds):
+            correlate_std.assign(correlate_std * std)
+        return self.correlates_means, self.correlates_stds
 
     def train_encoder(self):
         with tf.GradientTape() as tape:

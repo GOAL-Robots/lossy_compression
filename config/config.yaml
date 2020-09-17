@@ -1,5 +1,4 @@
 experiment_conf:
-  n_pretrain: 100
   n_train_encoder: 1000
   n_train_readout: 1000
   collection_name: trash
