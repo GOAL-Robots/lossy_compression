@@ -38,7 +38,7 @@ def start_job(cfg):
         ) + command_line_args
         print(command_line, flush=True)
         os.system(command_line)
-        time.sleep(5)
+        time.sleep(1)
 
 
 def get_n_free_cpus(node):

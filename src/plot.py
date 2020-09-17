@@ -67,7 +67,7 @@ def plot_speed_value_wrt_1d(ax, fits, wrt, xlabel=None, ylabel=None, title=None)
 
 if __name__ == '__main__':
 
-    for suffix in ["", "_mode_correlates", "_mode_sources_no_repetition", "_binary", "_binary_0.1", "_mode_correlates_5_sources", "_mode_correlates_fancy_loss"]:
+    for suffix in ["", "_mode_correlates", "_mode_sources_no_repetition", "_binary", "_binary_0.1", "_mode_correlates_5_sources", "_mode_correlates_fancy_loss", "_mode_correlates_dim_correlate_10", "_mode_correlates_dim_correlate_15", "_mode_correlates_dim_correlate_20", "_mode_correlates_dim_correlate_25", "_mode_correlates_dim_correlate_50", "_mode_correlates_dim_correlate_100", "_mode_correlates_dim_correlate_200", "_mode_correlates_dim_correlate_500", "_dim_correlate_1000"]:
         col = Collection('../data/wrt_dim_latent{}/'.format(suffix))
         fits = col.compute_fits()
 

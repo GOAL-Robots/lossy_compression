@@ -14,7 +14,7 @@ model_conf:
   dim_shared: 10
   dim_correlate: 100
   dim_latent: 10
-  decoding_mode: sources
+  decoding_mode: correlates
   default_layer_size: 200
 
 
