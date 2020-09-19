@@ -1,6 +1,6 @@
 experiment_conf:
-  n_train_encoder: 1000
-  n_train_readout: 1000
+  n_train_encoder: 2500
+  n_train_readout: 2500
   collection_name: trash
   data_collection_path: ${hydra:runtime.cwd}/../data/${experiment_conf.collection_name}
   n_repetitions: 3
@@ -9,9 +9,9 @@ model_conf:
   batch_size: 1024
   learning_rate: 1e-3
   n_sources: 2
-  dim_sources: 5
-  dim_shared: 10
-  dim_correlate: 100
+  dim_sources: 4
+  dim_shared: 4
+  dim_correlate: 80
   dim_latent: 10
   decoding_mode: correlates
   default_layer_size: 200

@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from collection import Collection
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 
 
 class FigureManager:
@@ -23,7 +24,7 @@ class FigureManager:
 
 
 def plot_convergence_value_wrt_1d(ax, sources_means, sources_stds, shared_means, shared_stds,
-        wrt, xlabel=None, ylabel=None, title=None):
+        wrt, xlabel=None, ylabel=None, title=None, legend=True):
     keys = list(sources_means.keys())
     keys.sort(key=lambda x: getattr(x, wrt))
     x = np.array([getattr(key, wrt) for key in keys])
@@ -38,24 +39,47 @@ def plot_convergence_value_wrt_1d(ax, sources_means, sources_stds, shared_means,
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
     ax.set_title(title)
-    ax.legend()
+    if legend:
+        ax.legend(loc='lower left')
 
 
 if __name__ == '__main__':
 
-    for suffix in ["", "_mode_correlates", "_mode_sources_no_repetition", "_binary", "_binary_0.1", "_mode_correlates_5_sources", "_mode_correlates_fancy_loss", "_mode_correlates_dim_correlate_10", "_mode_correlates_dim_correlate_15", "_mode_correlates_dim_correlate_20", "_mode_correlates_dim_correlate_25", "_mode_correlates_dim_correlate_50", "_mode_correlates_dim_correlate_100", "_mode_correlates_dim_correlate_200", "_mode_correlates_dim_correlate_500", "_dim_correlate_1000"]:
-        col = Collection('../data/wrt_dim_latent{}/'.format(suffix))
+    # for suffix in ["", "_mode_correlates", "_mode_sources_no_repetition", "_binary", "_binary_0.1", "_mode_correlates_5_sources", "_mode_correlates_fancy_loss", "_mode_correlates_dim_correlate_10", "_mode_correlates_dim_correlate_15", "_mode_correlates_dim_correlate_20", "_mode_correlates_dim_correlate_25", "_mode_correlates_dim_correlate_50", "_mode_correlates_dim_correlate_100", "_mode_correlates_dim_correlate_200", "_mode_correlates_dim_correlate_500", "_dim_correlate_1000"]:
+    #     col = Collection('../data/wrt_dim_latent{}/'.format(suffix))
+    #     sources_means, sources_stds, shared_means, shared_stds = col.get_final_reconstruction_errors_means_stds(n=50)
+    #
+    #     with FigureManager("/tmp/new_final_recerr{}.png".format(suffix)) as fig:
+    #         ax = fig.add_subplot(111)
+    #         plot_convergence_value_wrt_1d(ax, sources_means, sources_stds, shared_means, shared_stds,
+    #             wrt="dim_latent",
+    #             xlabel="latent dimension",
+    #             ylabel="mean reconstruction error",
+    #             title="Reconstruction error of the readouts (n_shared=10, n_non_shared=5x2)"
+    #         )
+
+    for collection_name in ["mutual_4_exclusive_2_n_2_corr_60", "mutual_4_exclusive_4_n_2_corr_80", "mutual_4_exclusive_8_n_2_corr_120", "mutual_4_exclusive_16_n_2_corr_200", "mutual_4_exclusive_32_n_2_corr_360"]:
+        col = Collection('../data/{}/'.format(collection_name))
         sources_means, sources_stds, shared_means, shared_stds = col.get_final_reconstruction_errors_means_stds(n=50)
 
-        with FigureManager("/tmp/new_final_recerr{}.png".format(suffix)) as fig:
+        with FigureManager("/tmp/{}.png".format(collection_name)) as fig:
             ax = fig.add_subplot(111)
             plot_convergence_value_wrt_1d(ax, sources_means, sources_stds, shared_means, shared_stds,
                 wrt="dim_latent",
                 xlabel="latent dimension",
                 ylabel="mean reconstruction error",
-                title="Reconstruction error of the readouts (n_shared=10, n_non_shared=5x2)"
+                title="Reconstruction error of the readouts",
             )
 
-        # with FigureManager("/tmp/speed{}.png".format(suffix)) as fig:
-        #     ax = fig.add_subplot(111)
-        #     plot_speed_value_wrt_1d(ax, fits, wrt="dim_latent", xlabel="latent dimension", ylabel="batch reconstruction error", title="Reconstruction error of the readouts")
+            limit = max([key.dim_latent for key in sources_means.keys()]) - 5
+            keys = [key for key in sources_means.keys() if key.dim_latent > limit]
+            sources_means = {key: sources_means[key] for key in keys}
+            sources_stds = {key: sources_stds[key] for key in keys}
+            shared_means = {key: shared_means[key] for key in keys}
+            shared_stds = {key: shared_stds[key] for key in keys}
+            inset = inset_axes(ax, width="30%", height="30%", loc=1)
+            plot_convergence_value_wrt_1d(inset, sources_means, sources_stds, shared_means, shared_stds,
+                wrt="dim_latent",
+                legend=False,
+            )
+            inset.set_ylim([0, None])

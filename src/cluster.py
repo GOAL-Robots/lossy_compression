@@ -63,7 +63,7 @@ def node_list_availability(node_list, min_cpus=4, min_free_mem=4000):
     return False
 
 
-def get_partition_reservation():
+def get_partition_reservation(default=("x-men", None)):
     # OPTION 1
     print("checking OPTION 1 ... ", end="")
     if node_list_availability(["xavier", "iceman", "jubilee", "frost", "beast", "cyclops", "shadowcat"]):
@@ -82,8 +82,8 @@ def get_partition_reservation():
         print("free space available, sending job")
         return "sleuths", "triesch-shared"
     print("no free space")
-    print("No space available on the cluster. Defaulting to xmen OPTION 1")
-    return "x-men", None
+    print("No space available on the cluster. Defaulting to", default)
+    return default
 
 
 def node_to_n_jobs():
