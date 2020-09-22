@@ -25,7 +25,7 @@ class Collection(object):
 
     def get_final_reconstruction_errors_means_stds(self):
         sources_data = {
-            run_description: np.array([run_data.sources for run_data in run_data_list]) / run_description.n_sources
+            run_description: np.array([run_data.sources for run_data in run_data_list])
             for run_description, run_data_list in self.data.items()
         }
         shared_data = {

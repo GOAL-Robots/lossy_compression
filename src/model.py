@@ -187,6 +187,6 @@ class Model(object):
             sources_recerrs, shared_recerrs = self.get_readouts_recerrs()
             data_sources.append(sources_recerrs.numpy())
             data_shared.append(shared_recerrs.numpy())
-        data_sources = np.concatenate(data_sources, axis=0)
+        data_sources = np.concatenate(data_sources, axis=0) / self.n_sources
         data_shared = np.concatenate(data_shared, axis=0)
         np.savez(filepath, sources=data_sources, shared=data_shared)
