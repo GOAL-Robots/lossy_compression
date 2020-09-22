@@ -21,16 +21,13 @@ class Model(object):
         else:
             self.dim_correlate = model_conf.dim_correlate
         self.dim_latent = model_conf.dim_latent
-        self.decoding_mode = model_conf.decoding_mode
-        self.default_layer_size = model_conf.default_layer_size
         self.networks = model_conf.networks
         self.noise = model_conf.noise
         ### models ###
         self.correlator_models = [to_model(model_conf.networks.correlator_model_arch) for i in range(self.n_sources)]
+        self.cross_modality_models = [to_model(model_conf.networks.cross_modality_model_arch) for i in range(self.n_sources)]
         self.encoder_model = to_model(model_conf.networks.encoder_model_arch)
-        self.correlate_decoder_model = to_model(model_conf.networks.correlate_decoder_model_arch)
-        self.source_decoder_model = to_model(model_conf.networks.source_decoder_model_arch)
-        self.source_no_repetition_decoder_model = to_model(model_conf.networks.source_no_repetition_decoder_model_arch)
+        self.decoder_model = to_model(model_conf.networks.decoder_model_arch)
         self.shared_readout_model = to_model(model_conf.networks.shared_readout_model_arch)
         self.source_readout_models = [to_model(model_conf.networks.source_readout_model_arch) for i in range(self.n_sources)]
         self.correlates_means = [tf.Variable(np.zeros(shape=self.dim_correlate), dtype=np.float32) for _ in range(self.n_sources)]
@@ -83,20 +80,25 @@ class Model(object):
             raise ValueError("unrecognized option ({})".format(format))
 
     @tf.function
-    def get_latent(self, correlates):
-        return self.encoder_model(correlates)
+    def get_cross_modalities(self, correlates, format='list'):
+        ret = [
+            cross_modality_model(correlate)
+            for cross_modality_model, correlate in zip(self.cross_modality_models, correlates)
+        ]
+        if format == 'list':
+            return ret
+        elif format == 'tensor':
+            return tf.concat(ret, axis=-1)
+        else:
+            raise ValueError("unrecognized option ({})".format(format))
 
     @tf.function
-    def get_correlates_reconstructions(self, latent):
-        return self.correlate_decoder_model(latent)
+    def get_latent(self, cross_modalities):
+        return self.encoder_model(cross_modalities)
 
     @tf.function
-    def get_sources_reconstructions(self, latent):
-        return self.source_decoder_model(latent)
-
-    @tf.function
-    def get_sources_no_repetition_reconstructions(self, latent):
-        return self.source_no_repetition_decoder_model(latent)
+    def get_cross_modalities_reconstructions(self, latent):
+        return self.decoder_model(latent)
 
     @tf.function
     def get_sources_readouts(self, latent):
@@ -110,8 +112,9 @@ class Model(object):
     def get_readouts_recerrs(self):
         sources = self.get_sources()
         shared = self.get_shared()
-        correlates = self.get_correlates(sources, shared, format='tensor')
-        latent = self.get_latent(correlates)
+        correlates = self.get_correlates(sources, shared, format='list')
+        cross_modalities = self.get_cross_modalities(correlates, format='tensor')
+        latent = self.get_latent(cross_modalities)
         sources_readouts = self.get_sources_readouts(latent)
         shared_readout = self.get_shared_readout(latent)
         sources_recerrs = [
@@ -136,34 +139,34 @@ class Model(object):
         return self.correlates_means, self.correlates_stds
 
     @tf.function
+    def train_cross_modality(self):
+        with tf.GradientTape() as tape:
+            sources = self.get_sources()
+            shared = self.get_shared()
+            correlates = self.get_correlates(sources, shared, format='list')
+            cross_modalities = self.get_cross_modalities(correlates, format='list')
+            loss = 0
+            for i, cross_modality in enumerate(cross_modalities):
+                loss += tf.reduce_sum(tf.reduce_mean(
+                    (cross_modality - tf.concat([c for j, c in enumerate(correlates) if j != i], axis=-1)) ** 2,
+                    axis=-1
+                ))
+            variables = sum([x.variables for x in self.cross_modality_models], [])
+            grads = tape.gradient(loss, variables)
+            self.optimizer.apply_gradients(zip(grads, variables))
+        return loss / self.batch_size
+
+    @tf.function
     def train_encoder(self):
         with tf.GradientTape() as tape:
             sources = self.get_sources()
             shared = self.get_shared()
-            correlates = self.get_correlates(sources, shared, format='tensor')
-            latent = self.get_latent(correlates)
-            if self.decoding_mode == 'sources':
-                inputs = self.get_inputs(sources, shared)
-                inputs = tf.concat(inputs, axis=-1)
-                reconstructions = self.get_sources_reconstructions(latent)
-                loss = tf.reduce_sum(tf.reduce_mean((reconstructions - inputs) ** 2, axis=-1))
-                variables = self.encoder_model.variables + self.source_decoder_model.variables
-            elif self.decoding_mode == 'sources_no_repetition':
-                inputs = tf.concat(sources + [shared], axis=-1)
-                reconstructions = self.get_sources_no_repetition_reconstructions(latent)
-                loss = tf.reduce_sum(tf.reduce_mean((reconstructions - inputs) ** 2, axis=-1))
-                variables = self.encoder_model.variables + self.source_no_repetition_decoder_model.variables
-            elif self.decoding_mode == 'correlates':
-                reconstructions = self.get_correlates_reconstructions(latent)
-                loss = tf.reduce_sum(tf.reduce_mean((reconstructions - correlates) ** 2, axis=-1))
-                variables = self.encoder_model.variables + self.correlate_decoder_model.variables
-            elif self.decoding_mode == 'correlates_fancy_loss':
-                reconstructions = self.get_correlates_reconstructions(latent)
-                mse = (reconstructions - correlates) ** 2
-                loss = tf.reduce_sum(tf.reduce_mean(mse / tf.stop_gradient(mse + 0.1), axis=-1))
-                variables = self.encoder_model.variables + self.correlate_decoder_model.variables
-            else:
-                raise VallueError("unrecognized option in conf: {}".format(self.decoding_mode))
+            correlates = self.get_correlates(sources, shared, format='list')
+            cross_modalities = self.get_cross_modalities(correlates, format='tensor')
+            latent = self.get_latent(cross_modalities)
+            reconstructions = self.get_cross_modalities_reconstructions(latent)
+            loss = tf.reduce_sum(tf.reduce_mean((reconstructions - cross_modalities) ** 2, axis=-1))
+            variables = self.encoder_model.variables + self.decoder_model.variables
             grads = tape.gradient(loss, variables)
             self.optimizer.apply_gradients(zip(grads, variables))
         return loss / self.batch_size

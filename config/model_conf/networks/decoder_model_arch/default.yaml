@@ -63,7 +63,7 @@ config:
       kernel_regularizer: null
       name: dense_2
       trainable: true
-      units: ${plus_times:${model_conf.dim_sources},${model_conf.dim_shared},${model_conf.n_sources}}
+      units: ${times:${model_conf.dim_cross_modality},${model_conf.n_sources}}
       use_bias: true
   name: sequential
 keras_version: 2.3.0-tf

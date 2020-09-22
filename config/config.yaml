@@ -1,4 +1,5 @@
 experiment_conf:
+  n_cross_modality: 2500
   n_train_encoder: 2500
   n_train_readout: 2500
   collection_name: trash
@@ -14,19 +15,18 @@ model_conf:
   dim_shared: 4
   dim_correlate: 80
   dim_correlate_auto: ${get_dim_correlate:${model_conf.dim_sources},${model_conf.dim_shared},${model_conf.dim_correlate},${model_conf.correlate_dilation_factor},${model_conf.auto_correlate_dim}}
+  dim_cross_modality: ${to_cross_modality_dim:${model_conf.dim_correlate_auto},${model_conf.n_sources}}
   correlate_dilation_factor: 10
   auto_correlate_dim: True
   dim_latent: 10
-  decoding_mode: correlates
   default_layer_size: 200
 
 
 defaults:
   - model_conf/networks/correlator_model_arch: default
+  - model_conf/networks/cross_modality_model_arch: default
   - model_conf/networks/encoder_model_arch: default
-  - model_conf/networks/source_decoder_model_arch: default
-  - model_conf/networks/source_no_repetition_decoder_model_arch: default
-  - model_conf/networks/correlate_decoder_model_arch: default
+  - model_conf/networks/decoder_model_arch: default
   - model_conf/networks/source_readout_model_arch: default
   - model_conf/networks/shared_readout_model_arch: default
   - model_conf/noise: gaussian

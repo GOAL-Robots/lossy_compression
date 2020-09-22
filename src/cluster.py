@@ -63,7 +63,8 @@ def node_list_availability(node_list, min_cpus=4, min_free_mem=4000):
     return False
 
 
-def get_partition_reservation(default=("x-men", None)):
+# def get_partition_reservation(default=("x-men", None)):
+def get_partition_reservation(default=("sleuths", None)):
     # OPTION 1
     print("checking OPTION 1 ... ", end="")
     if node_list_availability(["xavier", "iceman", "jubilee", "frost", "beast", "cyclops", "shadowcat"]):
@@ -142,7 +143,8 @@ def ssh_command(cmd):
     client = SSHClient()
     client.set_missing_host_key_policy(AutoAddPolicy())
     client.load_system_host_keys()
-    PASSWORD = getpass("Please enter password\n")
+    # PASSWORD = getpass("Please enter password\n")
+    PASSWORD = "Her%Twok7"
     client.connect(host, username=user, password=PASSWORD)
     stdin, stdout, stderr = client.exec_command("""(
         eval "$(/home/wilmot/.software/miniconda/miniconda3/bin/conda shell.bash hook)" ;

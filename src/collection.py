@@ -50,7 +50,7 @@ class Collection(object):
         }
         return sources_means, sources_stds, shared_means, shared_stds
 
-    def plot_wrt_latent_dim(self, ax, legend=True, lasts=3, inset=False, ylabel=False, title='exclusive'):
+    def plot_wrt_latent_dim(self, ax, legend=True, lasts=3, inset=False, ylabel=False, title='exclusive', vline=True):
         sources_means, sources_stds, shared_means, shared_stds = self.get_final_reconstruction_errors_means_stds()
         keys = list(sources_means.keys())
         keys.sort(key=lambda x: x.dim_latent)
@@ -71,7 +71,8 @@ class Collection(object):
         ax.plot(x, shared_means, color='r', linestyle='--', marker='o', label="shared")
         ax.fill_between(x, sources_means - sources_stds, sources_means + sources_stds, color='b', alpha=0.5)
         ax.fill_between(x, shared_means - shared_stds, shared_means + shared_stds, color='r', alpha=0.5)
-        ax.axvline(keys[0].dim_shared + (keys[0].n_sources * keys[0].dim_sources), color='k', linestyle='--')
+        if vline:
+            ax.axvline(keys[0].dim_shared + (keys[0].n_sources * keys[0].dim_sources), color='k', linestyle='--')
         ax.set_xlabel("latent dimension")
         if ylabel:
             ax.set_ylabel(r"mean reconstruction errors $\tilde{r}_{m}$ and $\tilde{r}_{e}$")
