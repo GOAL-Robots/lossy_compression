@@ -16,7 +16,10 @@ class Model(object):
         self.n_sources = model_conf.n_sources
         self.dim_sources = model_conf.dim_sources
         self.dim_shared = model_conf.dim_shared
-        self.dim_correlate = model_conf.dim_correlate
+        if model_conf.auto_correlate_dim:
+            self.dim_correlate = model_conf.correlate_dilation_factor * (self.dim_shared + self.dim_sources)
+        else:
+            self.dim_correlate = model_conf.dim_correlate
         self.dim_latent = model_conf.dim_latent
         self.decoding_mode = model_conf.decoding_mode
         self.default_layer_size = model_conf.default_layer_size
@@ -35,6 +38,7 @@ class Model(object):
         ### optimizer ###
         self.optimizer = tf.keras.optimizers.Adam(self.learning_rate)
 
+    @tf.function
     def _get_noise(self, shape):
         if self.noise.type == "gaussian":
             return tf.random.normal(
@@ -51,15 +55,19 @@ class Model(object):
                 rate=1 / self.noise.mean,
             ).sample(sample_shape=shape)
 
+    @tf.function
     def get_sources(self):
         return [self._get_noise((self.batch_size, self.dim_sources)) for i in range(self.n_sources)]
 
+    @tf.function
     def get_shared(self):
         return self._get_noise((self.batch_size, self.dim_shared))
 
+    @tf.function
     def get_inputs(self, sources, shared):
         return [tf.concat([source, shared], axis=-1) for source in sources]
 
+    @tf.function
     def get_correlates(self, sources, shared, format='list'):
         inputs = self.get_inputs(sources, shared)
         ret = [
@@ -74,23 +82,46 @@ class Model(object):
         else:
             raise ValueError("unrecognized option ({})".format(format))
 
+    @tf.function
     def get_latent(self, correlates):
         return self.encoder_model(correlates)
 
+    @tf.function
     def get_correlates_reconstructions(self, latent):
         return self.correlate_decoder_model(latent)
 
+    @tf.function
     def get_sources_reconstructions(self, latent):
         return self.source_decoder_model(latent)
 
+    @tf.function
     def get_sources_no_repetition_reconstructions(self, latent):
         return self.source_no_repetition_decoder_model(latent)
 
+    @tf.function
     def get_sources_readouts(self, latent):
         return [source_readout_model(latent) for source_readout_model in self.source_readout_models]
 
+    @tf.function
     def get_shared_readout(self, latent):
         return self.shared_readout_model(latent)
+
+    @tf.function
+    def get_readouts_recerrs(self):
+        sources = self.get_sources()
+        shared = self.get_shared()
+        correlates = self.get_correlates(sources, shared, format='tensor')
+        latent = self.get_latent(correlates)
+        sources_readouts = self.get_sources_readouts(latent)
+        shared_readout = self.get_shared_readout(latent)
+        sources_recerrs = [
+            tf.reduce_mean((source - source_readout) ** 2, axis=-1)
+            for source, source_readout in zip(sources, sources_readouts)
+        ]
+        all_sources_recerrs = tf.stack(sources_recerrs, axis=-1)
+        sources_recerrs = tf.reduce_sum(all_sources_recerrs, axis=-1)
+        shared_recerrs = tf.reduce_mean((shared - shared_readout) ** 2, axis=-1)
+        return sources_recerrs, shared_recerrs
 
     def z_score(self):
         sources = self.get_sources()
@@ -104,6 +135,7 @@ class Model(object):
             correlate_std.assign(correlate_std * std)
         return self.correlates_means, self.correlates_stds
 
+    @tf.function
     def train_encoder(self):
         with tf.GradientTape() as tape:
             sources = self.get_sources()
@@ -136,24 +168,25 @@ class Model(object):
             self.optimizer.apply_gradients(zip(grads, variables))
         return loss / self.batch_size
 
+    @tf.function
     def train_readout(self):
         with tf.GradientTape() as tape:
-            sources = self.get_sources()
-            shared = self.get_shared()
-            correlates = self.get_correlates(sources, shared, format='tensor')
-            latent = self.get_latent(correlates)
-            sources_readouts = self.get_sources_readouts(latent)
-            shared_readout = self.get_shared_readout(latent)
-            sources_losses = [tf.reduce_sum(tf.reduce_mean(
-                (source - source_readout) ** 2,
-                axis=-1))
-                for source, source_readout in zip(sources, sources_readouts)
-            ]
-            all_sources_losses = tf.stack(sources_losses, axis=0)
-            sources_loss = tf.reduce_sum(all_sources_losses)
-            shared_loss = tf.reduce_sum(tf.reduce_mean((shared - shared_readout) ** 2, axis=-1))
+            sources_recerrs, shared_recerrs = self.get_readouts_recerrs()
+            sources_loss = tf.reduce_sum(sources_recerrs)
+            shared_loss = tf.reduce_sum(shared_recerrs)
             loss = sources_loss + shared_loss
             variables = sum([model.variables for model in self.source_readout_models], self.shared_readout_model.variables)
             grads = tape.gradient(loss, variables)
             self.optimizer.apply_gradients(zip(grads, variables))
-        return sources_loss / self.n_sources / self.batch_size, shared_loss / self.batch_size
+        return sources_loss / self.batch_size, shared_loss / self.batch_size
+
+    def dump_test_data(self, filepath, n_batch):
+        data_sources = []
+        data_shared = []
+        for i in range(n_batch):
+            sources_recerrs, shared_recerrs = self.get_readouts_recerrs()
+            data_sources.append(sources_recerrs.numpy())
+            data_shared.append(shared_recerrs.numpy())
+        data_sources = np.concatenate(data_sources, axis=0)
+        data_shared = np.concatenate(data_shared, axis=0)
+        np.savez(filepath, sources=data_sources, shared=data_shared)

@@ -4,14 +4,18 @@ experiment_conf:
   collection_name: trash
   data_collection_path: ${hydra:runtime.cwd}/../data/${experiment_conf.collection_name}
   n_repetitions: 3
+  n_test_batch: 10
 
 model_conf:
   batch_size: 1024
-  learning_rate: 1e-3
+  learning_rate: 5e-3
   n_sources: 2
   dim_sources: 4
   dim_shared: 4
   dim_correlate: 80
+  dim_correlate_auto: ${get_dim_correlate:${model_conf.dim_sources},${model_conf.dim_shared},${model_conf.dim_correlate},${model_conf.correlate_dilation_factor},${model_conf.auto_correlate_dim}}
+  correlate_dilation_factor: 10
+  auto_correlate_dim: True
   dim_latent: 10
   decoding_mode: correlates
   default_layer_size: 200

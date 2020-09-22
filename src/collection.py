@@ -2,11 +2,13 @@ import numpy as np
 import os
 from collections import defaultdict, namedtuple
 import re
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 
 
 class Collection(object):
     def __init__(self, path):
         self.path = path
+        self.name = path.strip("/").split("/")[-1]
         self.data = defaultdict(list)
         self.RunDescription = namedtuple('RunDescription', ['n_sources', 'dim_sources', 'dim_shared', 'dim_correlate', 'dim_latent'])
         self.RunData = namedtuple('RunData', ['sources', 'shared'])
@@ -21,13 +23,13 @@ class Collection(object):
             run_data = self.RunData(new_data["sources"], new_data["shared"])
             self.data[run_description].append(run_data)
 
-    def get_final_reconstruction_errors_means_stds(self, n=100):
+    def get_final_reconstruction_errors_means_stds(self):
         sources_data = {
-            run_description: np.array([run_data.sources[-n:] for run_data in run_data_list])
+            run_description: np.array([run_data.sources for run_data in run_data_list]) / run_description.n_sources
             for run_description, run_data_list in self.data.items()
         }
         shared_data = {
-            run_description: np.array([run_data.shared[-n:] for run_data in run_data_list])
+            run_description: np.array([run_data.shared for run_data in run_data_list])
             for run_description, run_data_list in self.data.items()
         }
         sources_means = {
@@ -35,7 +37,7 @@ class Collection(object):
             for run_description, data in sources_data.items()
         }
         sources_stds = {
-            run_description: np.std(data)
+            run_description: np.std(np.mean(data, axis=-1))
             for run_description, data in sources_data.items()
         }
         shared_means = {
@@ -43,10 +45,54 @@ class Collection(object):
             for run_description, data in shared_data.items()
         }
         shared_stds = {
-            run_description: np.std(data)
+            run_description: np.std(np.mean(data, axis=-1))
             for run_description, data in shared_data.items()
         }
         return sources_means, sources_stds, shared_means, shared_stds
+
+    def plot_wrt_latent_dim(self, ax, legend=True, lasts=3, inset=False, ylabel=False, title='exclusive'):
+        sources_means, sources_stds, shared_means, shared_stds = self.get_final_reconstruction_errors_means_stds()
+        keys = list(sources_means.keys())
+        keys.sort(key=lambda x: x.dim_latent)
+        x = np.array([key.dim_latent for key in keys])
+        sources_means = np.array([sources_means[key] for key in keys])
+        sources_stds = np.array([sources_stds[key] for key in keys])
+        shared_means = np.array([shared_means[key] for key in keys])
+        shared_stds = np.array([shared_stds[key] for key in keys])
+        # ax.plot([0], [1], color='grey', marker='o')
+        # ax.plot([0, x[0]], [1, sources_means[0]], color='grey', linestyle='--')
+        # ax.plot([0, x[0]], [1, shared_means[0]], color='grey', linestyle='--')
+        x = np.concatenate([[0], x], axis=0)
+        sources_means = np.concatenate([[1], sources_means], axis=0)
+        sources_stds = np.concatenate([[0], sources_stds], axis=0)
+        shared_means = np.concatenate([[1], shared_means], axis=0)
+        shared_stds = np.concatenate([[0], shared_stds], axis=0)
+        ax.plot(x, sources_means, color='b', linestyle='--', marker='o', label="exclusive")
+        ax.plot(x, shared_means, color='r', linestyle='--', marker='o', label="shared")
+        ax.fill_between(x, sources_means - sources_stds, sources_means + sources_stds, color='b', alpha=0.5)
+        ax.fill_between(x, shared_means - shared_stds, shared_means + shared_stds, color='r', alpha=0.5)
+        ax.axvline(keys[0].dim_shared + (keys[0].n_sources * keys[0].dim_sources), color='k', linestyle='--')
+        ax.set_xlabel("latent dimension")
+        if ylabel:
+            ax.set_ylabel(r"mean reconstruction errors $\tilde{r}_{m}$ and $\tilde{r}_{e}$")
+        else:
+            ax.set_yticks([])
+        if title == 'exclusive':
+            title = r"$d_{e} = " + "{}$".format(keys[0].dim_sources)
+        elif title == 'n_sources':
+            title = r"$n = {}$".format(keys[0].n_sources)
+        ax.set_title(title)
+        if legend:
+            ax.legend(loc='center right')
+
+        if inset:
+            inset = inset_axes(ax, width="15%", height="30%", loc=1)
+            inset.plot(x[-lasts:], sources_means[-lasts:], color='b', linestyle='--', marker='o', label="exclusive")
+            inset.plot(x[-lasts:], shared_means[-lasts:], color='r', linestyle='--', marker='o', label="shared")
+            inset.fill_between(x[-lasts:], sources_means[-lasts:] - sources_stds[-lasts:], sources_means[-lasts:] + sources_stds[-lasts:], color='b', alpha=0.5)
+            inset.fill_between(x[-lasts:], shared_means[-lasts:] - shared_stds[-lasts:], shared_means[-lasts:] + shared_stds[-lasts:], color='r', alpha=0.5)
+            inset.set_ylim([0, None])
+
 
 
 if __name__ == '__main__':

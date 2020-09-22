@@ -14,6 +14,7 @@ class Experiment(object):
         self.model_conf = model_conf
         self.n_train_encoder = experiment_conf.n_train_encoder
         self.n_train_readout = experiment_conf.n_train_readout
+        self.n_test_batch = experiment_conf.n_test_batch
         ### summary ###
         self.summary_writer = tf.summary.create_file_writer("logs_{}".format(repetition))
         ### data storage ###
@@ -51,7 +52,7 @@ class Experiment(object):
         path = self.data_collection_path + "/" + filename
         os.makedirs(self.data_collection_path, exist_ok=True)
         print("saving", path)
-        np.savez(path, sources=self.data_readout_sources, shared=self.data_readout_shared)
+        self.model.dump_test_data(path, n_batch=self.n_test_batch)
 
     def __call__(self):
         self.model.z_score()
