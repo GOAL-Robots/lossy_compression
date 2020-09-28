@@ -10,6 +10,7 @@ from collections import defaultdict
 import json
 import time
 import custom_interpolations
+import numpy as np
 
 
 PASSWORD = None
@@ -63,28 +64,31 @@ def node_list_availability(node_list, min_cpus=4, min_free_mem=4000):
     return False
 
 
-# def get_partition_reservation(default=("x-men", None)):
-def get_partition_reservation(default=("sleuths", None)):
+def get_partition_reservation():
     # OPTION 1
     print("checking OPTION 1 ... ", end="")
-    if node_list_availability(["xavier", "iceman", "jubilee", "frost", "beast", "cyclops", "shadowcat"]):
-        print("free space available, sending job")
-        return "x-men", None
-    print("no free space")
-    # OPTION 2
-    print("checking OPTION 2 ... ", end="")
     if node_list_availability(["turbine", "vane"]):
         print("free space available, sending job")
         return "sleuths", None
     print("no free space")
-    # OPTION 3
-    print("checking OPTION 3 ... ", end="")
+    # OPTION 2
+    print("checking OPTION 2 ... ", end="")
     if node_list_availability(["jetski"]):
         print("free space available, sending job")
         return "sleuths", "triesch-shared"
     print("no free space")
-    print("No space available on the cluster. Defaulting to", default)
-    return default
+    # OPTION 3
+    print("checking OPTION 3 ... ", end="")
+    if node_list_availability(["xavier", "iceman", "jubilee", "frost", "beast", "cyclops", "shadowcat"]):
+        print("free space available, sending job")
+        return "x-men", None
+    print("no free space")
+    if np.random.rand() > 1 / 2:
+        print("No space available on the cluster. Defaulting to vane turbine")
+        return "sleuths", None
+    else:
+        print("No space available on the cluster. Defaulting to jetski")
+        return "sleuths", "triesch-shared"
 
 
 def node_to_n_jobs():
@@ -143,8 +147,7 @@ def ssh_command(cmd):
     client = SSHClient()
     client.set_missing_host_key_policy(AutoAddPolicy())
     client.load_system_host_keys()
-    # PASSWORD = getpass("Please enter password\n")
-    PASSWORD = "Her%Twok7"
+    PASSWORD = getpass("Please enter password\n")
     client.connect(host, username=user, password=PASSWORD)
     stdin, stdout, stderr = client.exec_command("""(
         eval "$(/home/wilmot/.software/miniconda/miniconda3/bin/conda shell.bash hook)" ;

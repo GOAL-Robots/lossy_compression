@@ -23,7 +23,7 @@ class Collection(object):
             run_data = self.RunData(new_data["sources"], new_data["shared"])
             self.data[run_description].append(run_data)
 
-    def get_final_reconstruction_errors_means_stds(self):
+    def get_data(self):
         sources_data = {
             run_description: np.array([run_data.sources for run_data in run_data_list])
             for run_description, run_data_list in self.data.items()
@@ -32,6 +32,10 @@ class Collection(object):
             run_description: np.array([run_data.shared for run_data in run_data_list])
             for run_description, run_data_list in self.data.items()
         }
+        return sources_data, shared_data
+
+    def get_final_reconstruction_errors_means_stds(self):
+        sources_data, shared_data = self.get_data()
         sources_means = {
             run_description: np.mean(data)
             for run_description, data in sources_data.items()
@@ -51,10 +55,13 @@ class Collection(object):
         return sources_means, sources_stds, shared_means, shared_stds
 
     def plot_wrt_latent_dim(self, ax, legend=True, lasts=3, inset=False, ylabel=False, title='exclusive', vline=True):
+        sources_data, shared_data = self.get_data()
         sources_means, sources_stds, shared_means, shared_stds = self.get_final_reconstruction_errors_means_stds()
         keys = list(sources_means.keys())
         keys.sort(key=lambda x: x.dim_latent)
         x = np.array([key.dim_latent for key in keys])
+        sources_data = np.array([np.mean(sources_data[key], axis=-1) for key in keys])
+        shared_data = np.array([np.mean(shared_data[key], axis=-1) for key in keys])
         sources_means = np.array([sources_means[key] for key in keys])
         sources_stds = np.array([sources_stds[key] for key in keys])
         shared_means = np.array([shared_means[key] for key in keys])
@@ -73,6 +80,9 @@ class Collection(object):
         ax.fill_between(x, shared_means - shared_stds, shared_means + shared_stds, color='r', alpha=0.5)
         if vline:
             ax.axvline(keys[0].dim_shared + (keys[0].n_sources * keys[0].dim_sources), color='k', linestyle='--')
+        for repetition in shared_data.T:
+            repetition = np.concatenate([[1], repetition], axis=0)
+            ax.plot(x, repetition, marker='x', alpha=0.5, color='r', linestyle='')
         ax.set_xlabel("latent dimension")
         if ylabel:
             ax.set_ylabel(r"mean reconstruction errors $\tilde{r}_{m}$ and $\tilde{r}_{e}$")
@@ -85,6 +95,7 @@ class Collection(object):
         ax.set_title(title)
         if legend:
             ax.legend(loc='center right')
+        ax.set_ylim([-0.05, 1.05])
 
         if inset:
             inset = inset_axes(ax, width="15%", height="30%", loc=1)

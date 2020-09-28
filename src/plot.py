@@ -137,40 +137,63 @@ if __name__ == '__main__':
         # col = Collection('../data/mutual_4_exclusive_4_n_6_exp')
         # col.plot_wrt_latent_dim(ax, legend=False, title='n_sources')
 
+
+
+
+
+
+
     with FigureManager("../tmp/cm_vary_exclusive_dim.png") as fig:
         ax = fig.add_subplot(141)
-        col = Collection('../data/cm_mutual_4_exclusive_4_n_2')
+        col = Collection("../data/cm_mutual_4_exclusive_4_n_2_wrt_de_after_debug")
         col.plot_wrt_latent_dim(ax, legend=False, ylabel=True, title='exclusive', vline=False)
 
         ax = fig.add_subplot(142)
-        col = Collection('../data/cm_mutual_4_exclusive_10_n_2')
+        col = Collection("../data/cm_mutual_4_exclusive_10_n_2_wrt_de_after_debug")
         col.plot_wrt_latent_dim(ax, legend=False, title='exclusive', vline=False)
 
         ax = fig.add_subplot(143)
-        col = Collection('../data/cm_mutual_4_exclusive_16_n_2')
+        col = Collection("../data/cm_mutual_4_exclusive_16_n_2_wrt_de_after_debug")
         col.plot_wrt_latent_dim(ax, legend=False, title='exclusive', vline=False)
 
-        # ax = fig.add_subplot(144)
-        # col = Collection('../data/cm_mutual_4_exclusive_22_n_2')
-        # col.plot_wrt_latent_dim(ax, legend=False, title='exclusive', vline=False)
+        ax = fig.add_subplot(144)
+        col = Collection("../data/cm_mutual_4_exclusive_22_n_2_wrt_de_after_debug")
+        col.plot_wrt_latent_dim(ax, legend=False, title='exclusive', vline=False)
 
     with FigureManager("../tmp/cm_vary_n_sources.png") as fig:
         ax = fig.add_subplot(141)
-        col = Collection('../data/cm_mutual_4_exclusive_4_n_2_exp')
+        col = Collection('../data/cm_mutual_4_exclusive_4_n_2_wrt_n_after_debug')
         col.plot_wrt_latent_dim(ax, legend=False, ylabel=True, title='n_sources', vline=False)
 
         ax = fig.add_subplot(142)
-        col = Collection('../data/cm_mutual_4_exclusive_4_n_3_exp')
+        col = Collection('../data/cm_mutual_4_exclusive_4_n_3_wrt_n_after_debug')
         col.plot_wrt_latent_dim(ax, legend=False, title='n_sources', vline=False)
 
         ax = fig.add_subplot(143)
-        col = Collection('../data/cm_mutual_4_exclusive_4_n_4_exp')
+        col = Collection('../data/cm_mutual_4_exclusive_4_n_4_wrt_n_after_debug')
         col.plot_wrt_latent_dim(ax, legend=False, title='n_sources', vline=False)
 
-        # ax = fig.add_subplot(144)
-        # col = Collection('../data/cm_mutual_4_exclusive_4_n_5_exp')
-        # col.plot_wrt_latent_dim(ax, legend=False, title='n_sources', vline=False)
+        ax = fig.add_subplot(144)
+        col = Collection('../data/cm_mutual_4_exclusive_4_n_5_wrt_n_after_debug')
+        col.plot_wrt_latent_dim(ax, legend=False, title='n_sources', vline=False)
 
-        # ax = fig.add_subplot(146)
-        # col = Collection('../data/cm_mutual_4_exclusive_4_n_6_exp')
-        # col.plot_wrt_latent_dim(ax, legend=False, title='n_sources', vline=False)
+    # with FigureManager("../tmp/debud.png") as fig:
+    #     ax = fig.add_subplot(152)
+    #     col = Collection('../data/cm_mutual_4_exclusive_4_n_4_wrt_n_debug_1')
+    #     col.plot_wrt_latent_dim(ax, legend=False, title='n_sources', vline=False)
+    #
+    #     ax = fig.add_subplot(153)
+    #     col = Collection('../data/cm_mutual_4_exclusive_4_n_4_wrt_n_debug_2')
+    #     col.plot_wrt_latent_dim(ax, legend=False, title='n_sources', vline=False)
+    #
+    #     ax = fig.add_subplot(154)
+    #     col = Collection('../data/cm_mutual_4_exclusive_4_n_4_wrt_n_debug_3')
+    #     col.plot_wrt_latent_dim(ax, legend=False, title='n_sources', vline=False)
+    #
+    #     ax = fig.add_subplot(151)
+    #     col = Collection('../data/cm_mutual_4_exclusive_4_n_4_wrt_n_debug_0')
+    #     col.plot_wrt_latent_dim(ax, legend=False, ylabel=True, title='n_sources', vline=False)
+    #
+    #     ax = fig.add_subplot(155)
+    #     col = Collection('../data/cm_mutual_4_exclusive_4_n_4_wrt_n_debug_4')
+    #     col.plot_wrt_latent_dim(ax, legend=False, title='n_sources', vline=False)
