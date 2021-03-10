@@ -1,6 +1,5 @@
 from model import Model
 import hydra
-import custom_interpolations
 import tensorflow as tf
 import numpy as np
 from time import gmtime, strftime
