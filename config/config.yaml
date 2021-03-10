@@ -4,11 +4,11 @@ experiment_conf:
   collection_name: trash
   data_collection_path: ${hydra:runtime.cwd}/../data/${experiment_conf.collection_name}
   n_repetitions: 3
-  n_test_batch: 10
+  n_test_batch: 100
 
 model_conf:
-  batch_size: 1024
-  learning_rate: 5e-3
+  batch_size: 128
+  learning_rate: 1e-3
   n_sources: 2
   dim_sources: 4
   dim_shared: 4
