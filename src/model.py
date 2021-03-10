@@ -5,7 +5,8 @@ from omegaconf import OmegaConf
 import numpy as np
 
 
-def to_model(cfg):
+def to_model(cfg, n_output_units):
+    cfg.config.layers[-1].config.units = n_output_units
     return models.model_from_yaml(OmegaConf.to_yaml(cfg, resolve=True))
 
 
@@ -16,23 +17,25 @@ class Model(object):
         self.n_sources = model_conf.n_sources
         self.dim_sources = model_conf.dim_sources
         self.dim_shared = model_conf.dim_shared
-        if model_conf.auto_correlate_dim:
-            self.dim_correlate = model_conf.correlate_dilation_factor * (self.dim_shared + self.dim_sources)
-        else:
-            self.dim_correlate = model_conf.dim_correlate
+        self.dim_correlate = model_conf.correlate_dilation_factor * (self.dim_shared + self.dim_sources)
         self.dim_latent = model_conf.dim_latent
         self.decoding_mode = model_conf.decoding_mode
+        if self.decoding_mode == 'sources':
+            self.dim_reconstruction = (self.dim_sources + self.dim_shared) * self.n_sources
+        elif self.decoding_mode == 'sources_no_repetition':
+            self.dim_reconstruction = self.dim_sources * self.n_sources + self.dim_shared
+        elif self.decoding_mode == 'correlates':
+            self.dim_reconstruction = self.dim_correlate * self.n_sources
+        else:
+            raise VallueError("unrecognized option in conf: {}".format(self.decoding_mode))
         self.default_layer_size = model_conf.default_layer_size
-        self.networks = model_conf.networks
         self.noise = model_conf.noise
         ### models ###
-        self.correlator_models = [to_model(model_conf.networks.correlator_model_arch) for i in range(self.n_sources)]
-        self.encoder_model = to_model(model_conf.networks.encoder_model_arch)
-        self.correlate_decoder_model = to_model(model_conf.networks.correlate_decoder_model_arch)
-        self.source_decoder_model = to_model(model_conf.networks.source_decoder_model_arch)
-        self.source_no_repetition_decoder_model = to_model(model_conf.networks.source_no_repetition_decoder_model_arch)
-        self.shared_readout_model = to_model(model_conf.networks.shared_readout_model_arch)
-        self.source_readout_models = [to_model(model_conf.networks.source_readout_model_arch) for i in range(self.n_sources)]
+        self.correlator_models = [to_model(model_conf.correlator_model_arch, self.dim_correlate) for i in range(self.n_sources)]
+        self.encoder_model = to_model(model_conf.encoder_model_arch, self.dim_latent)
+        self.decoder_model = to_model(model_conf.decoder_model_arch, self.dim_reconstruction)
+        self.shared_readout_model = to_model(model_conf.shared_readout_model_arch, self.dim_shared)
+        self.source_readout_models = [to_model(model_conf.source_readout_model_arch, self.dim_sources) for i in range(self.n_sources)]
         self.correlates_means = [tf.Variable(np.zeros(shape=self.dim_correlate), dtype=np.float32) for _ in range(self.n_sources)]
         self.correlates_stds = [tf.Variable(np.ones(shape=self.dim_correlate), dtype=np.float32) for _ in range(self.n_sources)]
         ### optimizer ###
@@ -87,16 +90,8 @@ class Model(object):
         return self.encoder_model(correlates)
 
     @tf.function
-    def get_correlates_reconstructions(self, latent):
-        return self.correlate_decoder_model(latent)
-
-    @tf.function
-    def get_sources_reconstructions(self, latent):
-        return self.source_decoder_model(latent)
-
-    @tf.function
-    def get_sources_no_repetition_reconstructions(self, latent):
-        return self.source_no_repetition_decoder_model(latent)
+    def get_reconstructions(self, latent):
+        return self.decoder_model(latent)
 
     @tf.function
     def get_sources_readouts(self, latent):
@@ -145,25 +140,15 @@ class Model(object):
             if self.decoding_mode == 'sources':
                 inputs = self.get_inputs(sources, shared)
                 inputs = tf.concat(inputs, axis=-1)
-                reconstructions = self.get_sources_reconstructions(latent)
-                loss = tf.reduce_sum(tf.reduce_mean((reconstructions - inputs) ** 2, axis=-1))
-                variables = self.encoder_model.variables + self.source_decoder_model.variables
             elif self.decoding_mode == 'sources_no_repetition':
                 inputs = tf.concat(sources + [shared], axis=-1)
-                reconstructions = self.get_sources_no_repetition_reconstructions(latent)
-                loss = tf.reduce_sum(tf.reduce_mean((reconstructions - inputs) ** 2, axis=-1))
-                variables = self.encoder_model.variables + self.source_no_repetition_decoder_model.variables
             elif self.decoding_mode == 'correlates':
-                reconstructions = self.get_correlates_reconstructions(latent)
-                loss = tf.reduce_sum(tf.reduce_mean((reconstructions - correlates) ** 2, axis=-1))
-                variables = self.encoder_model.variables + self.correlate_decoder_model.variables
-            elif self.decoding_mode == 'correlates_fancy_loss':
-                reconstructions = self.get_correlates_reconstructions(latent)
-                mse = (reconstructions - correlates) ** 2
-                loss = tf.reduce_sum(tf.reduce_mean(mse / tf.stop_gradient(mse + 0.1), axis=-1))
-                variables = self.encoder_model.variables + self.correlate_decoder_model.variables
+                inputs = correlates
             else:
                 raise VallueError("unrecognized option in conf: {}".format(self.decoding_mode))
+            reconstructions = self.get_reconstructions(latent)
+            loss = tf.reduce_sum(tf.reduce_mean((reconstructions - inputs) ** 2, axis=-1))
+            variables = self.encoder_model.variables + self.decoder_model.variables
             grads = tape.gradient(loss, variables)
             self.optimizer.apply_gradients(zip(grads, variables))
         return loss / self.batch_size

@@ -46,7 +46,7 @@ class Experiment(object):
             self.model_conf.n_sources,
             self.model_conf.dim_sources,
             self.model_conf.dim_shared,
-            self.model_conf.dim_correlate,
+            self.model_conf.correlate_dilation_factor * (self.model_conf.dim_shared + self.model_conf.dim_sources),
             self.model_conf.dim_latent,
         )
         path = self.data_collection_path + "/" + filename
