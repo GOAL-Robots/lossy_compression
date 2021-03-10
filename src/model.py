@@ -5,7 +5,8 @@ from omegaconf import OmegaConf
 import numpy as np
 
 
-def to_model(cfg):
+def to_model(cfg, n_output_units):
+    cfg.config.layers[-1].config.units = n_output_units
     return models.model_from_yaml(OmegaConf.to_yaml(cfg, resolve=True))
 
 
@@ -16,20 +17,17 @@ class Model(object):
         self.n_sources = model_conf.n_sources
         self.dim_sources = model_conf.dim_sources
         self.dim_shared = model_conf.dim_shared
-        if model_conf.auto_correlate_dim:
-            self.dim_correlate = model_conf.correlate_dilation_factor * (self.dim_shared + self.dim_sources)
-        else:
-            self.dim_correlate = model_conf.dim_correlate
+        self.dim_correlate = model_conf.correlate_dilation_factor * (self.dim_shared + self.dim_sources)
+        self.dim_cross_modality = self.dim_correlate * (self.n_sources - 1)
         self.dim_latent = model_conf.dim_latent
-        self.networks = model_conf.networks
         self.noise = model_conf.noise
         ### models ###
-        self.correlator_models = [to_model(model_conf.networks.correlator_model_arch) for i in range(self.n_sources)]
-        self.cross_modality_models = [to_model(model_conf.networks.cross_modality_model_arch) for i in range(self.n_sources)]
-        self.encoder_model = to_model(model_conf.networks.encoder_model_arch)
-        self.decoder_model = to_model(model_conf.networks.decoder_model_arch)
-        self.shared_readout_model = to_model(model_conf.networks.shared_readout_model_arch)
-        self.source_readout_models = [to_model(model_conf.networks.source_readout_model_arch) for i in range(self.n_sources)]
+        self.correlator_models = [to_model(model_conf.correlator_model_arch, self.dim_correlate) for i in range(self.n_sources)]
+        self.cross_modality_models = [to_model(model_conf.cross_modality_model_arch, self.dim_cross_modality) for i in range(self.n_sources)]
+        self.encoder_model = to_model(model_conf.encoder_model_arch, self.dim_latent)
+        self.decoder_model = to_model(model_conf.decoder_model_arch, self.dim_cross_modality * self.n_sources)
+        self.shared_readout_model = to_model(model_conf.shared_readout_model_arch, self.dim_shared)
+        self.source_readout_models = [to_model(model_conf.source_readout_model_arch, self.dim_sources) for i in range(self.n_sources)]
         self.correlates_means = [tf.Variable(np.zeros(shape=self.dim_correlate), dtype=np.float32) for _ in range(self.n_sources)]
         self.correlates_stds = [tf.Variable(np.ones(shape=self.dim_correlate), dtype=np.float32) for _ in range(self.n_sources)]
         ### optimizer ###

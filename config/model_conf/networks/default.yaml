@@ -63,7 +63,7 @@ config:
       kernel_regularizer: null
       name: dense_2
       trainable: true
-      units: ${model_conf.dim_latent}
+      units: 1
       use_bias: true
   name: sequential
 keras_version: 2.3.0-tf
